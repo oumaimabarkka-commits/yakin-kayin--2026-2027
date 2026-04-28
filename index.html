@@ -193,8 +193,8 @@ fetch("data.csv")
                 remplirSelect("filtreProduit", prodSet, "Produit");
                 
                 ajouterLegendes();
-                
-                // AJOUT : On charge les 1286 villes une fois que data.csv est prêt
+
+                // APPEL DE LA NOUVELLE FONCTION
                 chargerVillesSupplementaires();
             }
         });
@@ -218,7 +218,9 @@ function chargerVillesSupplementaires() {
             complete: function(results) {
                 let s = document.getElementById("filtreVille");
                 let villesPresentes = new Set();
-                Array.from(s.options).forEach(opt => villesPresentes.add(normalize(opt.value)));
+                Array.from(s.options).forEach(opt => {
+                    if(opt.value) villesPresentes.add(normalize(opt.value));
+                });
 
                 results.data.forEach(row => {
                     let v = row["ville"]?.trim();
@@ -233,9 +235,9 @@ function chargerVillesSupplementaires() {
                         villesPresentes.add(normalize(v));
                     }
                 });
-                // Re-trier le select
+                // Tri final alphabétique du menu déroulant
                 let options = Array.from(s.options);
-                let first = options.shift();
+                let first = options.shift(); // Garde "Ville : Toutes" en haut
                 options.sort((a, b) => a.text.localeCompare(b.text));
                 s.innerHTML = ""; s.appendChild(first);
                 options.forEach(opt => s.appendChild(opt));
