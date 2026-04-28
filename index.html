@@ -14,15 +14,8 @@
         select, input { padding: 8px; border-radius: 4px; border: 1px solid #ddd; min-width: 150px; }
         .range-box { background: #eef2f3; padding: 8px 15px; border-radius: 6px; border: 1px solid #ddd; display: flex; align-items: center; gap: 10px; }
         
-        .legend { 
-            background: white; padding: 10px; border-radius: 8px; 
-            box-shadow: 0 0 5px rgba(0,0,0,0.3); line-height: 22px; 
-            max-height: 500px; overflow-y: auto; width: 260px; font-size: 11px;
-        }
-        .legend b.title { 
-            font-size: 12px; display: block; margin-bottom: 8px; 
-            border-bottom: 2px solid #eee; color: red; line-height: 1.4; 
-        }
+        .legend { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.3); line-height: 22px; max-height: 500px; overflow-y: auto; width: 260px; font-size: 11px; }
+        .legend b.title { font-size: 12px; display: block; margin-bottom: 8px; border-bottom: 2px solid #eee; color: red; line-height: 1.4; }
         .legend span { cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 3px 5px; border-radius: 3px; font-weight: bold; }
         .legend span:hover { background: #f0f0f0; }
         .legend-logo { width: 20px; height: 20px; object-fit: contain; border-radius: 2px; background: white; border: 1px solid #f0f0f0; }
@@ -125,7 +118,7 @@ const loadVilles = fetch("villes_idf.csv").then(r => r.text());
 Promise.all([loadData, loadVilles]).then(([csvData, csvVilles]) => {
     let frsSet = new Set(), villeSet = new Set(), cpSet = new Set(), prodSet = new Set();
 
-    // 1. Analyse des 1286 villes
+    // 1. Analyse du fichier villes_idf.csv (Les 1286 villes)
     Papa.parse(csvVilles, {
         header: true, skipEmptyLines: true, delimiter: ";",
         complete: function(res) {
@@ -134,14 +127,14 @@ Promise.all([loadData, loadVilles]).then(([csvData, csvVilles]) => {
                 let lat = parseFloat(row["lat"]?.toString().replace(",", "."));
                 let lng = parseFloat(row["long"]?.toString().replace(",", "."));
                 if (v && !isNaN(lat)) {
-                    villeSet.add(v);
+                    villeSet.add(v); // AJOUT DANS LA LISTE DÉROULANTE
                     villesCoords[normalize(v)] = [lat, lng];
                 }
             });
         }
     });
 
-    // 2. Analyse des fournisseurs
+    // 2. Analyse du fichier data.csv (Les fournisseurs)
     Papa.parse(csvData, {
         header: true, skipEmptyLines: true,
         complete: function(results) {
@@ -156,7 +149,7 @@ Promise.all([loadData, loadVilles]).then(([csvData, csvVilles]) => {
                 let p = row["Produit"]?.trim() || row["Produit "]?.trim();
 
                 if (f) frsSet.add(f);
-                if (v) villeSet.add(v);
+                if (v) villeSet.add(v); // Ajoute aussi les villes des fournisseurs
                 if (cp) cpSet.add(cp);
                 if (p) prodSet.add(p);
 
@@ -169,8 +162,9 @@ Promise.all([loadData, loadVilles]).then(([csvData, csvVilles]) => {
                 markers.push(m);
             });
 
+            // Une fois les deux fichiers lus, on remplit les sélecteurs
             remplirSelect("filtreNom", frsSet, "Fournisseur");
-            remplirSelect("filtreVille", villeSet, "Ville");
+            remplirSelect("filtreVille", villeSet, "Ville"); // C'est ici que les 1286 villes apparaissent
             remplirSelect("filtreCP", cpSet, "CP");
             remplirSelect("filtreProduit", prodSet, "Produit");
             ajouterLegendes();
@@ -181,7 +175,8 @@ Promise.all([loadData, loadVilles]).then(([csvData, csvVilles]) => {
 function remplirSelect(id, set, label) {
     let s = document.getElementById(id);
     s.innerHTML = `<option value="">${label} : Tous</option>`;
-    Array.from(set).sort().forEach(v => {
+    // Tri alphabétique pour faciliter la recherche parmi les 1286 villes
+    Array.from(set).sort((a, b) => a.localeCompare(b, 'fr')).forEach(v => {
         let o = document.createElement("option"); o.value = v; o.textContent = v;
         s.appendChild(o);
     });
@@ -242,6 +237,7 @@ function filtrer() {
 
         if (centre) {
             let dist = getDistance(centre[0], centre[1], d.lat, d.lng);
+            // On affiche si le marqueur est exactement dans la ville OU s'il est dans le rayon de la ville centre
             if (normalize(d.v) !== ville && dist > rayon) match = false;
         } else if (ville && normalize(d.v) !== ville) {
             match = false;
