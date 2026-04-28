@@ -9,14 +9,19 @@
         .header { display: flex; align-items: center; background: white; padding: 10px 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); gap: 20px; }
         .header img { height: 50px; width: auto; }
         .header h2 { margin: 0; color: #333; }
-        #map { height: 600px; border-radius: 8px; border: 1px solid #ccc; box-shadow: 0 2px 10px rgba(0,0,0,0.1); background: #e0e0e0; }
+        #map { height: 600px; border-radius: 8px; border: 1px solid #ccc; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .filters { margin-bottom: 15px; background: white; padding: 15px; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        select, input { padding: 8px; border-radius: 4px; border: 1px solid #ddd; min-width: 150px; }
+        
+        select, input { padding: 8px; border-radius: 4px; border: 1px solid #ddd; min-width: 160px; }
+        #filtreVille { min-width: 300px; font-weight: bold; border: 2px solid #3498db; }
+
         .range-box { background: #eef2f3; padding: 8px 15px; border-radius: 6px; border: 1px solid #ddd; display: flex; align-items: center; gap: 10px; }
         .legend { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.3); line-height: 22px; max-height: 500px; overflow-y: auto; width: 260px; font-size: 11px; }
         .legend b.title { font-size: 12px; display: block; margin-bottom: 8px; border-bottom: 2px solid #eee; color: red; line-height: 1.4; }
         .legend span { cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 3px 5px; border-radius: 3px; font-weight: bold; }
-        .legend-logo { width: 20px; height: 20px; object-fit: contain; }
+        .legend span:hover { background: #f0f0f0; }
+        .legend-logo { width: 20px; height: 20px; object-fit: contain; border-radius: 2px; background: white; border: 1px solid #f0f0f0; }
+        .legend-color-box { display: inline-block; width: 16px; height: 16px; border-radius: 3px; border: 1px solid #999; }
     </style>
 </head>
 <body>
@@ -28,13 +33,15 @@
 
 <div class="filters">
     <select id="filtreNom" onchange="filtrer()"><option value="">Fournisseur : Tous</option></select>
-    <select id="filtreVille" onchange="filtrer()"><option value="">Ville : Toutes</option></select>
+    <select id="filtreVille" onchange="filtrer()"><option value="">Chargement des villes...</option></select>
     <select id="filtreCP" onchange="filtrer()"><option value="">CP : Tous</option></select>
     <select id="filtreProduit" onchange="filtrer()"><option value="">Produit : Tous</option></select>
+
     <div class="range-box">
         Rayon : <input type="range" id="filtreRayon" min="0" max="50" value="0" oninput="document.getElementById('rayonVal').innerText = this.value; filtrer();">
         <span id="rayonVal">0</span> km
     </div>
+
     <button onclick="location.reload()" style="background:#ff7675; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">Reset</button>
 </div>
 
@@ -48,46 +55,18 @@ var map = L.map('map').setView([48.85, 2.35], 9);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
 var markers = [];
-var villesCoords = {};
+var villesCoords = {}; 
 var cercleRayon = null;
 
-var codesCouleurs = {
-    "ATPL CASELAS": "#1a5276", "BSM": "#922b21", "Bouvelot TP": "#1d8348", 
-    "CAUPAMAT CADENZ": "#7d3c98", "CHEUTIN": "#af601a", "COLBER": "#212f3d",
-    "EVA INDUSTRIES": "#641e16", "EUROPIERRE": "#1b4f72", "EVO LOCATION": "#0b5345",
-    "Fransbonhomme": "#4a235a", "GO POMPE": "#784212", "IDF MARQUAGE": "#17202a",
-    "Loxam": "#003399", "LM DISTRIBUTION": "#660000", "Point P": "#cc0000",
-    "pum": "#000000", "Raboni": "#006600", "RFM": "#330033",
-    "SODEXTRA": "#003333", "SNB": "#333300", "SOL 78": "#424949",
-    "SPME": "#154360", "SCIABBARRASI RENT": "#512e5f", "Tersen": "#7e5109",
-    "UTD": "#145a32", "VIACOV": "#7b241c", "YPREMA": "#212f3c", "Cemex": "#5D6D7E"
-};
-
-// J'ai corrigé YPERMA ici pour correspondre à votre image
-var logosMap = {
-    "Point P": "Point P.png",
-    "Tersen": "TERSEN.png",
-    "YPREMA": "YPERMA.jpg", 
-    "COLBER": "COLBER.jpg",
-    "VIACOV": "VIACOV.jpg",
-    "Bouvelot TP": "Bouvelot TP.png",
-    "CHEUTIN": "CHEUTIN.png",
-    "SNB": "SNB.jpg",
-    "EVO LOCATION": "EVO LOCATION.png",
-    "UTD": "UTD.png",
-    "SCIABBARRASI RENT": "SCIABBARRASI RENT.png",
-    "IDF MARQUAGE": "IDF MARQUAGE.jpg",
-    "EUROPIERRE": "EUROPIERRE.jpg",
-    "ATPL CASELAS": "ATPL CASELAS .png"
-};
+// Configuration Couleurs et Logos
+var codesCouleurs = { "ATPL CASELAS": "#1a5276", "BSM": "#922b21", "Bouvelot TP": "#1d8348", "CAUPAMAT CADENZ": "#7d3c98", "CHEUTIN": "#af601a", "COLBER": "#212f3d", "EVA INDUSTRIES": "#641e16", "EUROPIERRE": "#1b4f72", "EVO LOCATION": "#0b5345", "Fransbonhomme": "#4a235a", "GO POMPE": "#784212", "IDF MARQUAGE": "#17202a", "Loxam": "#003399", "LM DISTRIBUTION": "#660000", "Point P": "#cc0000", "pum": "#000000", "Raboni": "#006600", "RFM": "#330033", "SODEXTRA": "#003333", "SNB": "#333300", "SOL 78": "#424949", "SPME": "#154360", "SCIABBARRASI RENT": "#512e5f", "Tersen": "#7e5109", "UTD": "#145a32", "VIACOV": "#7b241c", "YPREMA": "#212f3c", "Cemex": "#5D6D7E" };
+var logosMap = { "Loxam": "https://loxam.com/wp-content/uploads/2022/08/logo-loxam-rental.png", "Point P": "Point P.png", "Raboni": "https://produits.batiactu.com/img/indus_auto/350-350-c/20200422_160646-raboni_2020.jpg", "Cemex": "https://findlogovector.com/wp-content/uploads/2018/12/cemex-logo-vector.png", "Tersen": "TERSEN.png", "pum": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTUeL7T4H-li-LTHqo0R5zvuokh7v_im9x02g&s", "YPREMA": "YPERMA.jpg", "Fransbonhomme": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQW9mK52-rP1Y7Z6Gg6h3bYl5v6X8vY5-L7Ag&s", "COLBER": "COLBER.jpg", "VIACOV": "VIACOV.jpg", "Bouvelot TP": "Bouvelot TP.png", "CHEUTIN": "CHEUTIN.png", "SNB": "SNB.jpg", "EVO LOCATION": "EVO LOCATION.png", "UTD": "UTD.png", "SCIABBARRASI RENT": "SCIABBARRASI RENT.png", "IDF MARQUAGE": "IDF MARQUAGE.jpg", "EUROPIERRE": "EUROPIERRE.jpg", "ATPL CASELAS": "ATPL CASELAS .png" };
+var leafletIconMap = { "#003399": "blue", "#cc0000": "red", "#006600": "green", "#000000": "black", "#424949": "grey", "#7d3c98": "violet", "#af601a": "orange", "#7e5109": "yellow", "#1a5276": "blue", "#922b21": "red", "#1d8348": "green", "#212f3d": "black" };
 
 function getIcon(hex) {
-    let color = "blue";
-    if (hex === "#cc0000") color = "red";
-    if (hex === "#006600") color = "green";
-    if (hex === "#000000") color = "black";
+    let colorName = leafletIconMap[hex] || "blue";
     return new L.Icon({
-        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
+        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${colorName}.png`,
         shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
         iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
     });
@@ -105,42 +84,56 @@ function getDistance(lat1, lon1, lat2, lon2) {
     return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// Chargement sécurisé
+// Chargement des fichiers
 Promise.all([
-    fetch("data.csv").then(r => r.text()).catch(e => ""),
-    fetch("villes_idf.csv").then(r => r.text()).catch(e => "")
+    fetch("data.csv").then(r => r.text()),
+    fetch("villes_idf.csv").then(r => r.text())
 ]).then(([csvData, csvVilles]) => {
-    let villeSet = new Set(), frsSet = new Set(), cpSet = new Set(), prodSet = new Set();
 
-    if(csvVilles) {
-        Papa.parse(csvVilles, { header: true, skipEmptyLines: true, delimiter: ";", complete: function(res) {
-            res.data.forEach(row => {
-                let v = row["Ville"]?.trim();
+    // 1. Traitement de villes_idf.csv (ville;CP;Latitude ville;Longitude ville)
+    let setToutesVilles = new Set();
+    Papa.parse(csvVilles, {
+        header: true, delimiter: ";", skipEmptyLines: true,
+        complete: function(results) {
+            results.data.forEach(row => {
+                let v = row["ville"]?.trim();
+                let lat = parseFloat(row["Latitude ville"]?.replace(",", "."));
+                let lng = parseFloat(row["Longitude ville"]?.replace(",", "."));
                 if (v) {
-                    villeSet.add(v);
-                    villesCoords[normalize(v)] = [parseFloat(row["lat"]?.replace(",", ".")), parseFloat(row["long"]?.replace(",", "."))];
+                    setToutesVilles.add(v);
+                    if (!isNaN(lat)) villesCoords[normalize(v)] = [lat, lng];
                 }
             });
-            remplirSelect("filtreVille", villeSet, "Ville");
-        }});
-    }
+            remplirSelect("filtreVille", setToutesVilles, "Ville");
+        }
+    });
 
-    if(csvData) {
-        Papa.parse(csvData, { header: true, skipEmptyLines: true, complete: function(results) {
+    // 2. Traitement de data.csv
+    Papa.parse(csvData, {
+        header: true, skipEmptyLines: true,
+        complete: function(results) {
+            let frsSet = new Set(), cpSet = new Set(), prodSet = new Set();
             results.data.forEach(row => {
-                let lat = parseFloat(row["latitude (fournisseur)"]?.replace(",", "."));
-                let lng = parseFloat(row["longitude (fournisseur)"]?.replace(",", "."));
-                if (isNaN(lat)) return;
+                let latF = parseFloat(row["latitude (fournisseur)"]?.replace(",", "."));
+                let lngF = parseFloat(row["longitude (fournisseur)"]?.replace(",", "."));
+                
+                // Si pas de coordonnées GPS fournisseur, on ne crée pas de marqueur
+                if (isNaN(latF) || isNaN(lngF)) return;
 
                 let f = row["fournisseur"]?.trim();
                 let v = row["ville"]?.trim();
-                let p = row["Produit"]?.trim();
+                let cp = row["CP"]?.trim();
+                let p = row["Produit"]?.trim() || row["Produit "]?.trim();
+
                 if (f) frsSet.add(f);
-                if (row["CP"]) cpSet.add(row["CP"].trim());
+                if (cp) cpSet.add(cp);
                 if (p) prodSet.add(p);
 
-                let m = L.marker([lat, lng], { icon: getIcon(codesCouleurs[f]) }).bindPopup(`<b>${f}</b><br>${v}`);
-                m.data = { f, v, cp: row["CP"], p, lat, lng };
+                let hex = codesCouleurs[f] || "#1f77b4";
+                let m = L.marker([latF, lngF], { icon: getIcon(hex) })
+                         .bindPopup(`<b>${f}</b><br>${row["Nom de l'agence"] || ""}<br>${row["adresse complete"] || ""}<br>${v}<br>Produit: ${p}`);
+                
+                m.data = { f, v, cp, p, lat: latF, lng: lngF };
                 m.addTo(map);
                 markers.push(m);
             });
@@ -148,50 +141,79 @@ Promise.all([
             remplirSelect("filtreCP", cpSet, "CP");
             remplirSelect("filtreProduit", prodSet, "Produit");
             ajouterLegendes();
-        }});
-    }
+        }
+    });
 });
 
 function remplirSelect(id, set, label) {
     let s = document.getElementById(id);
-    Array.from(set).sort((a, b) => a.localeCompare(b, 'fr')).forEach(v => {
+    s.innerHTML = `<option value="">${label} : Tous</option>`;
+    Array.from(set).sort().forEach(v => {
         let o = document.createElement("option"); o.value = v; o.textContent = v;
         s.appendChild(o);
     });
 }
 
 function ajouterLegendes() {
-    var legend = L.control({position: 'bottomright'});
-    legend.onAdd = function() {
+    var listeG2 = ["Point P", "Raboni", "CAUPAMAT CADENZ", "Tersen", "pum", "YPREMA", "Fransbonhomme", "SODEXTRA", "SPME", "Bouvelot TP", "SNB", "EVA INDUSTRIES", "LM DISTRIBUTION", "IDF MARQUAGE", "EUROPIERRE"];
+    var listeG1 = ["Loxam", "Cemex", "BSM", "COLBER", "SOL 78", "VIACOV", "CHEUTIN", "GO POMPE", "EVO LOCATION", "UTD", "SCIABBARRASI RENT", "RFM", "ATPL CASELAS"];
+    
+    function createLegendItem(f) {
+        var span = document.createElement("span");
+        let iconHtml = logosMap[f] ? `<img src="${logosMap[f]}" class="legend-logo" onerror="this.outerHTML='<div class=\'legend-color-box\' style=\'background:${codesCouleurs[f]}\'></div>'">` : `<div class="legend-color-box" style="background:${codesCouleurs[f] || '#ccc'}"></div>`;
+        span.innerHTML = `${iconHtml} ${f}`;
+        span.onclick = () => { document.getElementById("filtreNom").value = f; filtrer(); };
+        return span;
+    }
+    
+    var legL = L.control({position: 'bottomleft'});
+    legL.onAdd = function() {
         var div = L.DomUtil.create('div', 'legend');
-        div.innerHTML = '<b class="title">Liste des Fournisseurs</b>';
-        Object.keys(codesCouleurs).sort().forEach(f => {
-            let img = logosMap[f] ? `<img src="${logosMap[f]}" class="legend-logo">` : `<div style="width:20px;height:20px;background:${codesCouleurs[f]}"></div>`;
-            div.innerHTML += `<span onclick="document.getElementById('filtreNom').value='${f}';filtrer()">${img} ${f}</span>`;
-        });
+        div.innerHTML = `<b class="title">G2 : Matériel / Marquage</b>`;
+        listeG2.sort().forEach(f => { if(codesCouleurs[f]) div.appendChild(createLegendItem(f)); });
         return div;
     };
-    legend.addTo(map);
+    legL.addTo(map);
+
+    var legR = L.control({position: 'bottomright'});
+    legR.onAdd = function() {
+        var div = L.DomUtil.create('div', 'legend');
+        div.innerHTML = `<b class="title">G1 : Engins / Recyclage</b>`;
+        listeG1.sort().forEach(f => { if(codesCouleurs[f]) div.appendChild(createLegendItem(f)); });
+        return div;
+    };
+    legR.addTo(map);
 }
 
 function filtrer() {
     let nom = normalize(document.getElementById("filtreNom").value);
     let ville = normalize(document.getElementById("filtreVille").value);
+    let cp = normalize(document.getElementById("filtreCP").value);
+    let prod = normalize(document.getElementById("filtreProduit").value);
     let rayon = parseFloat(document.getElementById("filtreRayon").value);
-    let centre = (ville && villesCoords[ville]) ? villesCoords[ville] : null;
 
     if (cercleRayon) map.removeLayer(cercleRayon);
+    let centre = (ville && villesCoords[ville]) ? villesCoords[ville] : null;
+
     if (centre && rayon > 0) {
-        cercleRayon = L.circle(centre, { radius: rayon * 1000, color: 'red', fillOpacity: 0.1 }).addTo(map);
+        cercleRayon = L.circle(centre, { radius: rayon * 1000, color: '#333', fillOpacity: 0.1, weight: 1 }).addTo(map);
         map.fitBounds(cercleRayon.getBounds());
     }
 
     markers.forEach(m => {
+        let d = m.data;
         let match = true;
-        if (nom && normalize(m.data.f) !== nom) match = false;
-        if (centre && getDistance(centre[0], centre[1], m.data.lat, m.data.lng) > rayon) match = false;
-        else if (ville && !centre && normalize(m.data.v) !== ville) match = false;
+        if (nom && normalize(d.f) !== nom) match = false;
+        if (cp && normalize(d.cp) !== cp) match = false;
+        if (prod && normalize(d.p) !== prod) match = false;
 
+        if (centre) {
+            let dist = getDistance(centre[0], centre[1], d.lat, d.lng);
+            if (normalize(d.v) !== ville && dist > rayon) match = false;
+        } else if (ville && normalize(d.v) !== ville) {
+            match = false;
+        }
+        
         if (match) m.addTo(map); else map.removeLayer(m);
     });
 }
