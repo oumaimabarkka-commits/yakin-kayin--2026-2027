@@ -111,14 +111,14 @@ function getDistance(lat1, lon1, lat2, lon2) {
     return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-// CHARGEMENT DES DEUX FICHIERS
+// CHARGEMENT PARALLELE DES DEUX FICHIERS
 const loadData = fetch("data.csv").then(r => r.text());
 const loadVilles = fetch("villes_idf.csv").then(r => r.text());
 
 Promise.all([loadData, loadVilles]).then(([csvData, csvVilles]) => {
     let frsSet = new Set(), villeSet = new Set(), cpSet = new Set(), prodSet = new Set();
 
-    // 1. Analyse du fichier villes_idf.csv (Les 1286 villes)
+    // 1. Analyse du fichier villes_idf.csv (Source des 1286 villes)
     Papa.parse(csvVilles, {
         header: true, skipEmptyLines: true, delimiter: ";",
         complete: function(res) {
@@ -127,14 +127,14 @@ Promise.all([loadData, loadVilles]).then(([csvData, csvVilles]) => {
                 let lat = parseFloat(row["lat"]?.toString().replace(",", "."));
                 let lng = parseFloat(row["long"]?.toString().replace(",", "."));
                 if (v && !isNaN(lat)) {
-                    villeSet.add(v); // AJOUT DANS LA LISTE DÉROULANTE
+                    villeSet.add(v); 
                     villesCoords[normalize(v)] = [lat, lng];
                 }
             });
         }
     });
 
-    // 2. Analyse du fichier data.csv (Les fournisseurs)
+    // 2. Analyse du fichier data.csv (Source des fournisseurs)
     Papa.parse(csvData, {
         header: true, skipEmptyLines: true,
         complete: function(results) {
@@ -149,7 +149,7 @@ Promise.all([loadData, loadVilles]).then(([csvData, csvVilles]) => {
                 let p = row["Produit"]?.trim() || row["Produit "]?.trim();
 
                 if (f) frsSet.add(f);
-                if (v) villeSet.add(v); // Ajoute aussi les villes des fournisseurs
+                if (v) villeSet.add(v); 
                 if (cp) cpSet.add(cp);
                 if (p) prodSet.add(p);
 
@@ -162,9 +162,9 @@ Promise.all([loadData, loadVilles]).then(([csvData, csvVilles]) => {
                 markers.push(m);
             });
 
-            // Une fois les deux fichiers lus, on remplit les sélecteurs
+            // Remplissage final des listes déroulantes
             remplirSelect("filtreNom", frsSet, "Fournisseur");
-            remplirSelect("filtreVille", villeSet, "Ville"); // C'est ici que les 1286 villes apparaissent
+            remplirSelect("filtreVille", villeSet, "Ville"); 
             remplirSelect("filtreCP", cpSet, "CP");
             remplirSelect("filtreProduit", prodSet, "Produit");
             ajouterLegendes();
@@ -175,7 +175,6 @@ Promise.all([loadData, loadVilles]).then(([csvData, csvVilles]) => {
 function remplirSelect(id, set, label) {
     let s = document.getElementById(id);
     s.innerHTML = `<option value="">${label} : Tous</option>`;
-    // Tri alphabétique pour faciliter la recherche parmi les 1286 villes
     Array.from(set).sort((a, b) => a.localeCompare(b, 'fr')).forEach(v => {
         let o = document.createElement("option"); o.value = v; o.textContent = v;
         s.appendChild(o);
@@ -197,7 +196,7 @@ function ajouterLegendes() {
     var legendLeft = L.control({position: 'bottomleft'});
     legendLeft.onAdd = () => {
         var div = L.DomUtil.create('div', 'legend');
-        div.innerHTML = `<b class="title">G2 : Fournitures / Marquage / Matériel</b>`;
+        div.innerHTML = `<b class="title">G2 : Fournitures / Matériel</b>`;
         listeG2.sort().forEach(f => { if (codesCouleurs[f]) div.appendChild(createLegendItem(f)); });
         return div;
     };
@@ -237,7 +236,6 @@ function filtrer() {
 
         if (centre) {
             let dist = getDistance(centre[0], centre[1], d.lat, d.lng);
-            // On affiche si le marqueur est exactement dans la ville OU s'il est dans le rayon de la ville centre
             if (normalize(d.v) !== ville && dist > rayon) match = false;
         } else if (ville && normalize(d.v) !== ville) {
             match = false;
