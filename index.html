@@ -25,7 +25,6 @@
             width: 260px; 
             font-size: 11px;
         }
-        /* MODIFICATION : Titre G1 et G2 en rouge */
         .legend b.title { 
             font-size: 12px; 
             display: block; 
@@ -194,6 +193,9 @@ fetch("data.csv")
                 remplirSelect("filtreProduit", prodSet, "Produit");
                 
                 ajouterLegendes();
+                
+                // AJOUT : On charge les 1286 villes une fois que data.csv est prêt
+                chargerVillesSupplementaires();
             }
         });
     });
@@ -204,6 +206,41 @@ function remplirSelect(id, set, label) {
     Array.from(set).sort().forEach(v => {
         let o = document.createElement("option"); o.value = v; o.textContent = v;
         s.appendChild(o);
+    });
+}
+
+function chargerVillesSupplementaires() {
+    fetch("villes_idf.csv")
+    .then(r => r.text())
+    .then(csv => {
+        Papa.parse(csv, {
+            header: true, skipEmptyLines: true,
+            complete: function(results) {
+                let s = document.getElementById("filtreVille");
+                let villesPresentes = new Set();
+                Array.from(s.options).forEach(opt => villesPresentes.add(normalize(opt.value)));
+
+                results.data.forEach(row => {
+                    let v = row["ville"]?.trim();
+                    let lat = parseFloat(row["latitude"]?.replace(",", "."));
+                    let lng = parseFloat(row["longitude"]?.replace(",", "."));
+                    
+                    if (v && !villesPresentes.has(normalize(v))) {
+                        if (!isNaN(lat)) villesCoords[normalize(v)] = [lat, lng];
+                        let o = document.createElement("option");
+                        o.value = v; o.textContent = v;
+                        s.appendChild(o);
+                        villesPresentes.add(normalize(v));
+                    }
+                });
+                // Re-trier le select
+                let options = Array.from(s.options);
+                let first = options.shift();
+                options.sort((a, b) => a.text.localeCompare(b.text));
+                s.innerHTML = ""; s.appendChild(first);
+                options.forEach(opt => s.appendChild(opt));
+            }
+        });
     });
 }
 
