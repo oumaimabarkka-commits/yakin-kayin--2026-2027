@@ -167,22 +167,8 @@ fetch("data.csv")
                     if (p) prodSet.add(p);
 
                     let hex = codesCouleurs[f] || "#1f77b4";
-                    
-                    let popupContent = `
-                        <div style="line-height:1.6;">
-                            <b>Fournisseur :</b> ${f}<br>
-                            <b>Adresse :</b> ${row["adresse complete"] || ""}<br>
-                            <b>CP :</b> ${cp}<br>
-                            <b>Ville :</b> ${v}<br>
-                            <b>Région :</b> ${row["region"] || ""}<br>
-                            <b>Pays :</b> ${row["Pays"] || ""}<br>
-                            <b>Produit :</b> ${p}<br>
-                            <b>Email :</b> <a href="mailto:${row["Email"]}">${row["Email"] || ""}</a>
-                        </div>`;
-
                     let m = L.marker([latF, lngF], { icon: getIcon(hex) })
-                             .bindPopup(popupContent);
-                    
+                             .bindPopup(`<b>${f}</b><br>${v}`);
                     m.data = { f, v, cp, p, lat: latF, lng: lngF };
                     m.addTo(map);
                     markers.push(m);
@@ -191,10 +177,9 @@ fetch("data.csv")
                 remplirSelect("filtreVille", villeSet, "Ville");
                 remplirSelect("filtreCP", cpSet, "CP");
                 remplirSelect("filtreProduit", prodSet, "Produit");
-                
                 ajouterLegendes();
-
-                // APPEL DE LA NOUVELLE FONCTION
+                
+                // Lancement de l'enrichissement adapté à votre fichier
                 chargerVillesSupplementaires();
             }
         });
@@ -211,64 +196,54 @@ function remplirSelect(id, set, label) {
 
 function chargerVillesSupplementaires() {
     fetch("villes_idf.csv")
-    .then(r => r.text())
-    .then(csv => {
-        Papa.parse(csv, {
-            header: true, skipEmptyLines: true,
+    .then(r => r.ok ? r.text() : null)
+    .then(csvText => {
+        if (!csvText) return;
+        Papa.parse(csvText, {
+            header: true,
+            skipEmptyLines: true,
+            delimiter: ";", // Utilisation de votre séparateur point-virgule
             complete: function(results) {
                 let s = document.getElementById("filtreVille");
                 let villesPresentes = new Set();
-                Array.from(s.options).forEach(opt => {
-                    if(opt.value) villesPresentes.add(normalize(opt.value));
-                });
+                Array.from(s.options).forEach(opt => { if(opt.value) villesPresentes.add(normalize(opt.value)); });
 
                 results.data.forEach(row => {
-                    let v = row["ville"]?.trim();
-                    let lat = parseFloat(row["latitude"]?.replace(",", "."));
-                    let lng = parseFloat(row["longitude"]?.replace(",", "."));
+                    // Utilisation de vos en-têtes : Ville, lat, long
+                    let v = row["Ville"]?.trim();
+                    let lat = parseFloat(row["lat"]?.toString().replace(",", "."));
+                    let lng = parseFloat(row["long"]?.toString().replace(",", "."));
                     
                     if (v && !villesPresentes.has(normalize(v))) {
-                        if (!isNaN(lat)) villesCoords[normalize(v)] = [lat, lng];
-                        let o = document.createElement("option");
-                        o.value = v; o.textContent = v;
-                        s.appendChild(o);
-                        villesPresentes.add(normalize(v));
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            villesCoords[normalize(v)] = [lat, lng];
+                            let o = document.createElement("option");
+                            o.value = v; o.textContent = v;
+                            s.appendChild(o);
+                            villesPresentes.add(normalize(v));
+                        }
                     }
                 });
-                // Tri final alphabétique du menu déroulant
+
+                // Tri final alphabétique
                 let options = Array.from(s.options);
-                let first = options.shift(); // Garde "Ville : Toutes" en haut
+                let first = options.shift();
                 options.sort((a, b) => a.text.localeCompare(b.text));
                 s.innerHTML = ""; s.appendChild(first);
                 options.forEach(opt => s.appendChild(opt));
+                console.log("Chargement villes IDF terminé.");
             }
         });
     });
 }
 
 function ajouterLegendes() {
-    var listeG2 = [
-        "Point P", "Raboni", "CAUPAMAT CADENZ", "Tersen", "pum", "YPREMA", 
-        "Fransbonhomme", "SODEXTRA", "SPME", "Bouvelot TP", "SNB", 
-        "EVA INDUSTRIES", "LM DISTRIBUTION", "IDF MARQUAGE", "EUROPIERRE"
-    ];
-
-    var listeG1 = [
-        "Loxam", "Cemex", "BSM", "COLBER", "SOL 78", "VIACOV", 
-        "CHEUTIN", "GO POMPE", "EVO LOCATION", "UTD", 
-        "SCIABBARRASI RENT", "RFM", "ATPL CASELAS"
-    ];
+    var listeG2 = ["Point P", "Raboni", "CAUPAMAT CADENZ", "Tersen", "pum", "YPREMA", "Fransbonhomme", "SODEXTRA", "SPME", "Bouvelot TP", "SNB", "EVA INDUSTRIES", "LM DISTRIBUTION", "IDF MARQUAGE", "EUROPIERRE"];
+    var listeG1 = ["Loxam", "Cemex", "BSM", "COLBER", "SOL 78", "VIACOV", "CHEUTIN", "GO POMPE", "EVO LOCATION", "UTD", "SCIABBARRASI RENT", "RFM", "ATPL CASELAS"];
     
     function createLegendItem(f) {
         var span = document.createElement("span");
-        let iconHtml = "";
-        
-        if (logosMap[f]) {
-            iconHtml = `<img src="${logosMap[f]}" class="legend-logo" onerror="this.outerHTML='<div class=\'legend-color-box\' style=\'background:${codesCouleurs[f]}\'></div>'">`;
-        } else {
-            iconHtml = `<div class="legend-color-box" style="background:${codesCouleurs[f] || '#ccc'}"></div>`;
-        }
-
+        let iconHtml = (logosMap[f]) ? `<img src="${logosMap[f]}" class="legend-logo" onerror="this.outerHTML='<div class=\'legend-color-box\' style=\'background:${codesCouleurs[f]}\'></div>'">` : `<div class="legend-color-box" style="background:${codesCouleurs[f] || '#ccc'}"></div>`;
         span.innerHTML = `${iconHtml} ${f}`;
         span.onclick = () => { document.getElementById("filtreNom").value = f; filtrer(); };
         return span;
@@ -278,9 +253,7 @@ function ajouterLegendes() {
     legendLeft.onAdd = function() {
         var div = L.DomUtil.create('div', 'legend');
         div.innerHTML = `<b class="title">G2 : Fournitures / Marquage / Balisage / Matériel</b>`;
-        listeG2.sort().forEach(f => {
-            if (codesCouleurs[f]) div.appendChild(createLegendItem(f));
-        });
+        listeG2.sort().forEach(f => { if (codesCouleurs[f]) div.appendChild(createLegendItem(f)); });
         return div;
     };
     legendLeft.addTo(map);
@@ -289,9 +262,7 @@ function ajouterLegendes() {
     legendRight.onAdd = function() {
         var div = L.DomUtil.create('div', 'legend');
         div.innerHTML = `<b class="title">G1 : Engins grands / petits & Recyclage</b>`;
-        listeG1.sort().forEach(f => {
-            if (codesCouleurs[f]) div.appendChild(createLegendItem(f));
-        });
+        listeG1.sort().forEach(f => { if (codesCouleurs[f]) div.appendChild(createLegendItem(f)); });
         return div;
     };
     legendRight.addTo(map);
@@ -318,13 +289,10 @@ function filtrer() {
         if (nom && normalize(d.f) !== nom) match = false;
         if (cp && normalize(d.cp) !== cp) match = false;
         if (prod && normalize(d.p) !== prod) match = false;
-
         if (centre) {
             let dist = getDistance(centre[0], centre[1], d.lat, d.lng);
             if (normalize(d.v) !== ville && dist > rayon) match = false;
-        } else if (ville && normalize(d.v) !== ville) {
-            match = false;
-        }
+        } else if (ville && normalize(d.v) !== ville) match = false;
         if (match) m.addTo(map); else map.removeLayer(m);
     });
 }
